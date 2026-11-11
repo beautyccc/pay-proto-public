@@ -127,7 +127,7 @@ git push origin main
 
 **4.2 按 tag 整体回滚（适用于「整版退回上一个可用版本」）**
 
-当前可用基线：`v0.1`（= `404d4b1` 之前的骨架版本，tag 已推到远端）。
+当前可用基线：`v0.1`（annotated tag，指向 `404d4b1`，「17 屏骨架 + 三份文档」的首个可点穿版本；tag 已推到远端 `refs/tags/v0.1`）。
 
 ```bash
 git fetch --tags
