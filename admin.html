@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>聚合支付 · 运营后台（Web 端原型）</title>
+<title>聚合支付 · 运营后台（Web 端原型 v0.2）</title>
 <meta name="description" content="高保真可点原型 · 演示数据 · 非生产系统" />
 <link rel="stylesheet" href="assets/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>运</text></svg>" />
@@ -13,7 +13,7 @@
 <header class="topbar">
   <div class="brand">
     <div class="brand-mark" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">运</div>
-    <div>聚合支付 · 运营后台<small>高保真可点原型 v0.1 · 演示数据</small></div>
+    <div>聚合支付 · 运营后台<small>高保真可点原型 v0.2 · 演示数据</small></div>
   </div>
   <div class="seg" role="tablist">
     <button aria-selected="false" onclick="location.href='index.html'">小程序端</button>
@@ -26,9 +26,11 @@
   <aside class="side">
     <div class="grp">商户与代理</div>
     <a href="javascript:;" class="on" data-page="p-merchants"><span class="si">▤</span>商户管理</a>
+    <a href="javascript:;" data-page="p-agents"><span class="si">🌳</span>代理管理</a>
     <div class="grp">资金与分润</div>
     <a href="javascript:;" data-page="p-rates"><span class="si">％</span>费率管理</a>
     <a href="javascript:;" data-page="p-profit"><span class="si">◔</span>分润引擎</a>
+    <a href="javascript:;" data-page="p-withdrawals"><span class="si">⇪</span>提现管理</a>
     <div class="grp">通道与对账</div>
     <a href="javascript:;" data-page="p-channels"><span class="si">⇄</span>通道管理</a>
     <a href="javascript:;" data-page="p-recon"><span class="si">✓</span>对账中心</a>
@@ -48,9 +50,9 @@
           <div class="desc">全量商户 · 三态看板 · 费率覆盖 · 存量批量导入</div>
         </div>
         <div class="actions">
-          <button class="btn-xs">导出</button>
-          <button class="btn-xs">批量导入</button>
-          <button class="btn-xs primary">＋ 新增商户</button>
+          <button class="btn-xs" id="mchExport">导出</button>
+          <button class="btn-xs" data-locked="批量导入将于 v0.3 开放">批量导入</button>
+          <button class="btn-xs primary" id="mchAdd">＋ 新增商户</button>
         </div>
       </div>
 
@@ -76,6 +78,7 @@
           </div>
         </div>
         <div class="panel-body">
+          <div class="table-scroll">
           <table class="tbl">
             <thead>
               <tr>
@@ -136,6 +139,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
         <div class="pager">
           <span>共 128 条</span>
@@ -197,6 +201,74 @@
       </div>
     </section>
 
+    <!-- ========== 代理管理（AD-10~15） ========== -->
+    <section class="admin-page" id="p-agents">
+      <div class="page-head">
+        <div>
+          <h2>代理管理</h2>
+          <div class="desc">全平台代理树 · 层级关系 · 费率配置 · 状态管理</div>
+        </div>
+        <div class="actions">
+          <button class="btn-xs" id="agentExport">导出</button>
+          <button class="btn-xs primary" id="agentAdd">＋ 新增代理</button>
+        </div>
+      </div>
+
+      <div class="stats" id="agentStats"></div>
+
+      <div class="tabs page-tabs" id="agentTabs">
+        <button class="on" data-tab="tree">代理树</button>
+        <button data-tab="pending">待审核 <span class="tab-badge" id="agentPendingBadge">3</span></button>
+      </div>
+
+      <div class="demo-state" data-state-for="p-agents">
+        <span>演示状态</span>
+        <button data-state="default" class="on">默认</button>
+        <button data-state="loading">加载</button>
+        <button data-state="empty">空</button>
+        <button data-state="error">错误</button>
+      </div>
+
+      <div class="agents-layout" id="agentTreeWrap">
+        <div class="panel agent-tree-panel">
+          <div class="panel-head">
+            <h3>代理树</h3>
+            <div class="tools"><span class="chip line">最多 3 级（可配）</span></div>
+          </div>
+          <div class="tree-toolbar">
+            <input class="search" id="agentSearch" placeholder="代理名称 / 编号" />
+            <select class="btn-xs" id="agentStatusFilter">
+              <option value="all">全部状态</option>
+              <option value="normal">正常</option>
+              <option value="pending">审核中</option>
+              <option value="stopped">已停用</option>
+            </select>
+            <button class="btn-xs icon" id="agentExpandAll" title="展开全部">⊞</button>
+            <button class="btn-xs icon" id="agentCollapseAll" title="收起全部">⊟</button>
+          </div>
+          <div class="tree" id="agentTree" tabindex="0" aria-label="代理树"></div>
+          <div class="tree-foot" id="agentTreeFoot">默认选中根节点；↑↓ 移动，→ 展开，← 收起，Enter 打开详情。</div>
+        </div>
+        <div class="panel agent-detail" id="agentDetail"></div>
+      </div>
+      <div class="drawer-mask" id="agentDrawerMask" hidden></div>
+
+      <div class="panel" id="agentPendingPanel" hidden>
+        <div class="panel-head">
+          <h3>注册待审核</h3>
+          <div class="tools"><span class="chip warn">3 笔待处理</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="table-scroll">
+            <table class="tbl">
+              <thead><tr><th>代理 / 编号</th><th>上级</th><th>层级</th><th>提交时间</th><th>资料</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="agentPendingBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ========== 费率管理 ========== -->
     <section class="admin-page" id="p-rates">
       <div class="page-head">
@@ -221,6 +293,7 @@
           <div class="tools"><button class="btn-xs">银盛 ▾</button><button class="btn-xs">全部类目 ▾</button></div>
         </div>
         <div class="panel-body">
+          <div class="table-scroll">
           <table class="rate-matrix">
             <thead>
               <tr><th>支付方式</th><th>通道成本</th><th>商户报价</th><th>本层毛利</th><th>代理成本价</th><th>生效时间</th></tr>
@@ -233,6 +306,7 @@
               <tr><td>支付宝大额 · 花呗/信用卡</td><td class="cost">0.60%</td><td class="quote">0.68%</td><td class="gp">0.08%</td><td class="cost">0.62%</td><td>—</td></tr>
             </tbody>
           </table>
+          </div>
         </div>
         <div class="pager"><span>费率按「通道 × 支付方式」两维度取成本价，避免算错分润</span></div>
       </div>
@@ -264,6 +338,7 @@
           <div class="tools"><input class="search" placeholder="商户 / 通道 / 分润单号" /></div>
         </div>
         <div class="panel-body">
+          <div class="table-scroll">
           <table class="tbl">
             <thead>
               <tr><th>分润单</th><th>商户 / 通道</th><th style="text-align:right">交易额（元）</th><th style="text-align:right">毛利（元）</th><th style="text-align:right">分润金额（元）</th><th>受益人</th><th>状态</th><th>操作</th></tr>
@@ -276,7 +351,97 @@
               <tr><td class="num">PS20261110005</td><td>阿强理发工作室 <span class="chip">易生</span></td><td class="num" style="text-align:right">0.00</td><td class="num" style="text-align:right">0.00</td><td class="num" style="text-align:right">0.00</td><td>—</td><td><span class="chip line">未开始</span></td><td><a class="link" href="javascript:;">明细</a></td></tr>
             </tbody>
           </table>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ========== 提现管理（AD-50~55） ========== -->
+    <section class="admin-page" id="p-withdrawals">
+      <div class="page-head">
+        <div>
+          <h2>提现管理</h2>
+          <div class="desc">人工审批 · 批量代付 · 失败处理 · 手续费规则</div>
+        </div>
+        <div class="actions">
+          <button class="btn-xs" id="wdRuleBtn">手续费规则</button>
+          <button class="btn-xs" id="wdExport">导出</button>
+        </div>
+      </div>
+
+      <div class="note blue" id="wdClosedBanner" hidden>
+        <span>ℹ️</span>
+        <span>人工审批已关闭，提现按配置进入代付流程。<b>记录仍可查询，通过按钮不可用。</b></span>
+      </div>
+
+      <div class="stats" id="wdStats"></div>
+
+      <div class="tabs page-tabs" id="wdTabs">
+        <button class="on" data-status="pending">待审批 <span class="tab-badge" id="wdCountPending">8</span></button>
+        <button data-status="reviewing">审批中 <span class="tab-badge">3</span></button>
+        <button data-status="approved">已通过 <span class="tab-badge">12</span></button>
+        <button data-status="rejected">已驳回 <span class="tab-badge">2</span></button>
+        <button data-status="failed">打款失败 <span class="tab-badge">1</span></button>
+        <button data-status="all">全部</button>
+      </div>
+
+      <div class="demo-state" data-state-for="p-withdrawals">
+        <span>演示状态</span>
+        <button data-state="default" class="on">默认</button>
+        <button data-state="loading">加载</button>
+        <button data-state="empty">空</button>
+        <button data-state="error">错误</button>
+      </div>
+
+      <div class="filter-card">
+        <div class="filter-grid filters-5">
+          <label>代理<input class="input" id="wdFilterAgent" placeholder="代理名称 / 编号" /></label>
+          <label>科目<select class="select" id="wdFilterSubject">
+            <option value="all">全部科目</option>
+            <option value="dailyProfit">日结分润</option>
+            <option value="monthlyProfit">月结分润</option>
+            <option value="dailyBonus">日结奖励</option>
+            <option value="monthlyBonus">月结奖励</option>
+            <option value="shareBonus">分成奖励</option>
+          </select></label>
+          <label>时间<select class="select" id="wdFilterRange"><option value="all">全部时间</option><option value="today">今天</option><option value="7d">近 7 天</option></select></label>
+          <label>金额区间<select class="select" id="wdFilterAmount"><option value="all">全部金额</option><option value="lt5k">5,000 以下</option><option value="5k-10k">5,000 – 10,000</option><option value="gt10k">10,000 以上</option></select></label>
+          <label>通道<select class="select" id="wdFilterChannel"><option value="all">全部通道</option><option>银盛</option><option>拉卡拉</option><option>易生</option></select></label>
+        </div>
+        <button class="btn-xs" id="wdFilterReset">重置</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>提现申请</h3>
+          <div class="tools">
+            <button class="btn-xs" id="wdApprovalToggle">人工审批：开启</button>
+            <span class="chip line" id="wdTableHint">当前筛选：待审批</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table-scroll">
+            <table class="tbl wd-table">
+              <thead>
+                <tr>
+                  <th class="col-check"><input type="checkbox" id="wdCheckAll" aria-label="全选当前页" /></th>
+                  <th>申请单号</th><th>代理 / 层级</th><th>科目</th>
+                  <th style="text-align:right">提现金额（元）</th><th style="text-align:right">手续费（元）</th>
+                  <th style="text-align:right">到账金额（元）</th><th>收款账户</th><th>提交时间</th><th>状态</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="wdTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pager" id="wdPager"></div>
+      </div>
+
+      <div class="batch-bar" id="wdBatchBar" hidden>
+        <span>已选 <b id="wdBatchCount">0</b> 笔，合计 <b id="wdBatchSum">¥0.00</b></span>
+        <span class="batch-spacer"></span>
+        <button class="btn-xs" id="wdBatchCancel">取消</button>
+        <button class="btn-xs primary" id="wdBatchApprove">批量通过</button>
       </div>
     </section>
 
@@ -377,6 +542,7 @@
           </div>
         </div>
         <div class="panel-body">
+          <div class="table-scroll">
           <table class="tbl">
             <thead>
               <tr><th>类型</th><th>业务单号</th><th>通道</th><th style="text-align:right">系统金额（元）</th><th style="text-align:right">通道金额（元）</th><th style="text-align:right">差额</th><th>状态</th><th>操作</th></tr>
@@ -387,6 +553,7 @@
               <tr><td><span class="chip">退款未同步</span></td><td class="num">T2026110800441</td><td>易生</td><td class="num" style="text-align:right">46.00</td><td class="num" style="text-align:right">46.00</td><td class="num" style="text-align:right">0.00</td><td><span class="chip ok">已核实</span></td><td><a class="link" href="javascript:;">查看</a></td></tr>
             </tbody>
           </table>
+          </div>
         </div>
         <div class="pager"><span>差错记录不进入分润，处理完成后由日终任务补算</span></div>
       </div>
@@ -395,6 +562,12 @@
   </main>
 </div>
 
+<div class="admin-mask" id="adminMask" hidden>
+  <div class="admin-modal" id="adminModal" role="dialog" aria-modal="true"></div>
+</div>
+<div class="admin-toast" id="adminToast"></div>
+
+<script src="assets/money.js"></script>
 <script src="assets/admin.js"></script>
 </body>
 </html>
