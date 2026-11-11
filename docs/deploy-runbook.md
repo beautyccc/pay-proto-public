@@ -80,8 +80,8 @@ curl -s "https://api.github.com/repos/beautyccc/pay-proto-public/actions/runs?pe
 |---|---|
 | 本地自测 | 5–10 min（取决于改动面） |
 | push → Pages build success | 30 s–2 min |
-| push → 线上新内容可见 | 中位数约 50 s（记录见 §7） |
-| 完整回滚（revert + push + 生效） | 约 2 min（记录见 §7） |
+| push → 线上新内容可见 | 实测 33 s（2026-11-11 演练，见 §7） |
+| 完整回滚（revert + push + 生效） | 实测 53 s；遇并发推送需 rebase 重推，按 3 min 预算（见 §7） |
 
 ## 3. 验证命令
 
@@ -182,9 +182,27 @@ git push origin main
 
 | 日期 | 演练人 | 演练内容 | 生效 sha | revert sha | push→200 | push→404 | 总耗时 | 结论 |
 |---|---|---|---|---|---|---|---|---|
-| 2026-11-11 | 法拉第 | 新增 `docs/rollback-drill.md` 上线后 revert，验证 404 | 待回填 | 待回填 | 待回填 | 待回填 | 待回填 | 待回填 |
+| 2026-11-11 | 法拉第 | 新增 `docs/rollback-drill.md` 上线后 revert，验证 404 | `0533642` | `8b9202c` | 33 s | 53 s | 117 s | 通过 |
 
-详细时间线见 `docs/rollback-drill.md` 提交记录与本节回填。
+### 2026-11-11 首次演练 · 时间线（UTC）
+
+| 时刻 | 事件 |
+|---|---|
+| 08:37:30 | `git push origin main`（`404d4b1..0533642`，含 runbook `b5d663f` 与 drill `0533642`），耗时 4 s |
+| 08:37:35 | Pages run #6 `completed success`（head `0533642`） |
+| 08:38:03 | `GET /docs/rollback-drill.md` 返回 200，哨兵 `ROLLBACK-DRILL-20261111-1635` 命中 1 次 → **push→200 = 33 s** |
+| 08:38:13 | `git revert 0533642 --no-edit` 生成本地提交（1 s），首次 push 被拒——期间张无忌推了 `f7ec4a8`（仅新增 `docs/p0-breakdown.md`） |
+| 08:38:31 | `git pull --rebase origin main` 通过，revert 重写为 `8b9202c`，无冲突 |
+| 08:38:34 | 重推成功（`f7ec4a8..8b9202c`） |
+| 08:39:27 | `GET /docs/rollback-drill.md` 返回 404 → **push→404 = 53 s**；同时 `/` 与 `/admin.html` 均 200 |
+
+### 结论与改进项
+
+1. **回滚可用**：revert 单提交即可让线上文件失效，`/` 与 `/admin.html` 全程未受影响，无停机。总耗时 117 s，满足「3 分钟内回滚」。
+2. **并发推送是真实场景**：演练中被队友推送打断一次，`pull --rebase` 后重推，仅多花 ~12 s，无冲突。规则：**回滚时先 `git fetch` 看 `origin/main` 是否领先，再推**，避免临场慌乱。
+3. **Pages 无历史回滚**，revert 是唯一可靠手段；`git checkout <tag> -- <path>` 不删除新增文件，整版回滚要显式 `git rm` 或对引入版本做 revert（见 §4.2）。
+4. 构建触发稳定：三次 push（含 rebase 后重推）各触发一次 run，均 success，未出现「推了不构建」。
+
 
 ## 8. 上线检查清单
 
