@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>聚合支付 · 代理商展业系统（小程序端原型）</title>
+<meta name="description" content="高保真可点原型 · 演示数据 · 非生产系统" />
+<link rel="stylesheet" href="assets/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2307c160'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>支</text></svg>" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">支</div>
+    <div>聚合支付 · 代理展业<small>高保真可点原型 v0.1 · 演示数据</small></div>
+  </div>
+  <div class="seg" role="tablist">
+    <button aria-selected="true" onclick="location.href='index.html'">小程序端</button>
+    <button aria-selected="false" onclick="location.href='admin.html'">运营后台</button>
+  </div>
+  <a class="ghlink" href="https://github.com/beautyccc/pay-proto-public" target="_blank" rel="noopener">仓库</a>
+</header>
+
+<main class="view active">
+  <div class="phone-stage">
+    <div class="device">
+      <div class="screen">
+
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <span class="sig"><i></i><i></i><i></i><i></i></span>
+            <span style="font-size:11px">5G</span>
+            <span class="batt"></span>
+          </span>
+        </div>
+
+        <!-- 统一导航栏，由 JS 按屏幕切换标题 -->
+        <div class="navbar" id="navbar" style="display:none">
+          <button class="back" id="backBtn" aria-label="返回">‹</button>
+          <div class="title" id="navTitle">标题</div>
+          <span class="act" id="navAct"></span>
+        </div>
+
+        <!-- ========== 1. 启动说明页 ========== -->
+        <section class="mscreen active" id="m-splash" data-title="" data-nav="off" data-tab="">
+          <div class="splash">
+            <div class="logo-xl">支</div>
+            <h1>聚合支付 · 代理展业</h1>
+            <p class="sub">一站式商户进件 / 交易管理 / 分润结算平台<br />服务商与各级代理商专用</p>
+
+            <div class="notice">
+              <b>本小程序为代理人员内部系统</b><br />
+              仅供已授权合作代理账号使用。注册需上级邀请码，<br />
+              提交实名资料并通过审核后方可使用。
+            </div>
+
+            <div class="foot">
+              <button class="btn" data-go="m-login">登录</button>
+              <p>继续即表示同意《用户协议》与《隐私政策》</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 2. 登录 ========== -->
+        <section class="mscreen" id="m-login" data-title="" data-nav="off" data-tab="">
+          <div class="login-wrap">
+            <h2>账号登录</h2>
+            <p class="hint">使用注册时的手机号与密码登录。<br />未注册？请扫描上级代理的邀请码。</p>
+            <div class="login-form">
+              <div class="field">
+                <label>手机号</label>
+                <input class="input" value="138****6621" placeholder="请输入手机号" />
+              </div>
+              <div class="field">
+                <label>密码</label>
+                <input class="input" type="password" value="········" placeholder="请输入密码" />
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a94a6">
+                <label class="agree" style="margin:0"><input type="checkbox" checked /> 记住密码</label>
+                <a href="javascript:;" style="color:#07c160;text-decoration:none">忘记密码</a>
+              </div>
+              <button class="btn" data-go="m-home">登录</button>
+              <div class="divider-txt">或</div>
+              <button class="btn ghost" data-go="m-register">我有邀请码，去注册</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 3. 邀请码注册 + 实名 ========== -->
+        <section class="mscreen" id="m-register" data-title="代理注册" data-nav="on" data-tab="">
+          <div class="mp-body">
+            <div class="note" style="margin-bottom:12px">
+              <span>🔒</span><span>邀请码已校验：来自 <b>云启支付 · 华东大区</b>。注册即提交实名资料，审核通过前不可见业务内容。</span>
+            </div>
+
+            <div class="form-sec">
+              <h4>邀请码</h4>
+              <div class="field">
+                <input class="input" value="YQ-8823-KL" readonly />
+              </div>
+            </div>
+
+            <div class="form-sec">
+              <h4>主体信息</h4>
+              <div class="form-grid">
+                <div class="field">
+                  <label>代理名称 <span class="req">*</span></label>
+                  <input class="input" value="宁波海曙云拓服务部" />
+                </div>
+                <div class="row-2">
+                  <div class="field"><label>姓名 <span class="req">*</span></label><input class="input" value="王海涛" /></div>
+                  <div class="field"><label>手机号 <span class="req">*</span></label><input class="input" value="138 6621 0033" /></div>
+                </div>
+                <div class="row-2">
+                  <div class="field"><label>身份证号 <span class="req">*</span></label><input class="input" value="3302**********3417" /></div>
+                  <div class="field"><label>证件有效期</label><input class="input" value="2019-06-12 至 长期" /></div>
+                </div>
+                <div class="field">
+                  <label>身份证照片 <span class="req">*</span></label>
+                  <div class="row-2">
+                    <div style="border:1px dashed #cfd8e6;border-radius:11px;padding:18px;text-align:center;font-size:11.5px;color:#8a94a6">人像面<br />点击上传</div>
+                    <div style="border:1px dashed #cfd8e6;border-radius:11px;padding:18px;text-align:center;font-size:11.5px;color:#8a94a6">国徽面<br />点击上传</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-sec">
+              <h4>结算账户</h4>
+              <div class="form-grid">
+                <div class="row-2">
+                  <div class="field"><label>结算银行 <span class="req">*</span></label><input class="input" value="招商银行" /></div>
+                  <div class="field"><label>开户支行</label><input class="input" value="宁波海曙支行" /></div>
+                </div>
+                <div class="field"><label>银行卡号 <span class="req">*</span></label><input class="input" value="6225 **** **** 8899" /></div>
+                <div class="field"><label>结算卡照片 <span class="req">*</span></label>
+                  <div style="border:1px dashed #cfd8e6;border-radius:11px;padding:18px;text-align:center;font-size:11.5px;color:#8a94a6">点击上传</div>
+                </div>
+              </div>
+            </div>
+
+            <label class="agree" style="margin:2px 0 14px">
+              <input type="checkbox" checked />
+              <span>我已阅读并同意《用户协议》《数字证书服务协议》，并授权平台为办理支付业务向收单机构提交上述资料。</span>
+            </label>
+
+            <button class="btn" data-go="m-pending">提交审核</button>
+          </div>
+        </section>
+
+        <!-- ========== 4. 实名审核中 ========== -->
+        <section class="mscreen" id="m-pending" data-title="实名审核" data-nav="on" data-tab="">
+          <div class="mp-body" style="text-align:center;padding-top:44px">
+            <div style="width:76px;height:76px;border-radius:50%;background:#fef6e7;display:grid;place-items:center;margin:0 auto;font-size:32px">⏳</div>
+            <h3 style="margin-top:18px;font-size:19px">资料已提交，等待审核</h3>
+            <p style="font-size:12.5px;color:#8a94a6;margin-top:9px;line-height:1.75">预计 1 个工作日内完成。审核期间<br />仅可查看进度，不可使用业务功能。</p>
+
+            <div class="card card-pad" style="margin-top:26px;text-align:left">
+              <div class="timeline">
+                <div class="tl-item done">
+                  <span class="tl-dot"></span>
+                  <div><div class="tl-t">提交注册资料</div><div class="tl-d">2026-11-11 09:42 · 邀请码 YQ-8823-KL</div></div>
+                </div>
+                <div class="tl-item now">
+                  <span class="tl-dot"></span>
+                  <div><div class="tl-t">服务商实名审核</div><div class="tl-d">审核中 · 预计 11-12 前完成</div></div>
+                </div>
+                <div class="tl-item">
+                  <span class="tl-dot"></span>
+                  <div><div class="tl-t">解锁全部功能</div><div class="tl-d">审核通过后自动生效</div></div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn ghost" style="margin-top:18px" data-go="m-home">模拟审核通过（演示）</button>
+            <p style="font-size:11px;color:#b3bbc8;margin-top:14px">演示用：真实环境需后台运营审核</p>
+          </div>
+        </section>
+
+        <!-- ========== 5. 首页看板 ========== -->
+        <section class="mscreen" id="m-home" data-title="首页" data-nav="off" data-tab="home">
+          <div class="mp-body" style="padding-top:12px">
+            <div class="greet">
+              <div class="avatar">云启</div>
+              <div>
+                <div class="name">王海涛 · 云启支付</div>
+                <div class="meta"><span class="dot-live"></span>已实名 · 华东大区 · 编号 A0182</div>
+              </div>
+              <div class="bell">🔔<i></i></div>
+            </div>
+
+            <div class="range">
+              <button class="on">今天</button>
+              <button>昨天</button>
+              <button>近 30 天</button>
+              <button>更多 ▾</button>
+            </div>
+
+            <div class="kpi-hero">
+              <div class="k">交易金额（元）</div>
+              <div class="v">1,286,430<small>.00</small></div>
+              <div class="trend">▲ 12.4% <span style="color:rgba(255,255,255,.55)">较昨日 · 3,142 笔</span></div>
+            </div>
+
+            <div class="kpi-grid">
+              <div class="kpi"><div class="k">新增商户</div><div class="v">12 <small>户</small></div></div>
+              <div class="kpi"><div class="k">新增门店</div><div class="v">26 <small>家</small></div></div>
+              <div class="kpi"><div class="k">新增伙伴</div><div class="v">3 <small>家</small></div></div>
+              <div class="kpi"><div class="k">新增收益</div><div class="v">4,286<small>.35</small></div></div>
+            </div>
+
+            <div class="notice-bar">
+              <span class="tag">公告</span>
+              <span>易生通道一期已接入，进件功能灰度开放中</span>
+            </div>
+
+            <div class="sec-title"><h3>常用功能</h3></div>
+            <div class="card card-pad">
+              <div class="grid-4">
+                <a href="javascript:;" data-go="m-mchnew"><span class="ico">＋</span>新增商户</a>
+                <a href="javascript:;" data-go="m-merchants"><span class="ico">🏪</span>商户管理</a>
+                <a href="javascript:;" data-go="m-mine"><span class="ico">🎟️</span>邀请代理</a>
+                <a href="javascript:;" data-go="m-mine"><span class="ico">👥</span>代理管理</a>
+                <a href="javascript:;" data-go="m-mchdetail"><span class="ico">▣</span>终端管理</a>
+                <a href="javascript:;" data-go="m-revenue"><span class="ico">📈</span>交易查询</a>
+                <a href="javascript:;" data-go="m-revenue"><span class="ico">💰</span>收益查询</a>
+                <a href="javascript:;" data-go="m-mine"><span class="ico">📣</span>展业支持</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 6. 商户列表 ========== -->
+        <section class="mscreen" id="m-merchants" data-title="商户管理" data-nav="off" data-tab="mch">
+          <div class="mp-body" style="padding-top:12px">
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input class="input" placeholder="搜索商户名称 / 商户号" style="height:38px;padding:0 12px;font-size:13px" />
+              <button class="btn sm" data-go="m-mchnew" style="height:38px">＋ 新增</button>
+            </div>
+            <div class="tabs">
+              <button class="on">全部 128</button>
+              <button>审核中 6</button>
+              <button>已停用 2</button>
+            </div>
+
+            <a class="mch" href="javascript:;" data-go="m-mchdetail">
+              <div class="thumb">味</div>
+              <div class="info">
+                <div class="nm">味知香卤味店 <span class="chip ok">正常</span></div>
+                <div class="sub">银盛 · M8832****0912 · 费率 0.38%</div>
+              </div>
+              <span class="arrow">›</span>
+            </a>
+
+            <a class="mch" href="javascript:;" data-go="m-mchdetail">
+              <div class="thumb">悦</div>
+              <div class="info">
+                <div class="nm">悦刻便利店 <span class="chip ok">正常</span></div>
+                <div class="sub">拉卡拉 · M7712****3388 · 费率 0.35%</div>
+              </div>
+              <span class="arrow">›</span>
+            </a>
+
+            <a class="mch" href="javascript:;" data-go="m-mchdetail">
+              <div class="thumb">阿</div>
+              <div class="info">
+                <div class="nm">阿强理发工作室 <span class="chip warn">签约中</span></div>
+                <div class="sub">易生 · 进件已通过 · 待商户扫码签约</div>
+              </div>
+              <span class="arrow">›</span>
+            </a>
+
+            <a class="mch" href="javascript:;" data-go="m-mchdetail">
+              <div class="thumb">老</div>
+              <div class="info">
+                <div class="nm">老张五金建材 <span class="chip danger">已停用</span></div>
+                <div class="sub">银盛 · 风控冻结 · 2026-10-28</div>
+              </div>
+              <span class="arrow">›</span>
+            </a>
+
+            <div class="empty"><div class="e-ico">▤</div>已显示全部 4 条演示数据</div>
+          </div>
+        </section>
+
+        <!-- ========== 7. 商户进件 ========== -->
+        <section class="mscreen" id="m-mchnew" data-title="新增商户" data-nav="on" data-tab="">
+          <div class="mp-body">
+            <div class="sec-title" style="margin-top:2px"><h3>选择进件通道</h3><span>一期已接入 3 家</span></div>
+            <div class="ch-list">
+              <div class="ch-card on" data-ch="ys">
+                <div class="ch-logo y">银盛</div>
+                <div>
+                  <div class="cn">银盛支付 <span class="chip ok">可注册</span></div>
+                  <div class="cd">微信 / 支付宝 / 云闪付 / 刷卡 · 支持分账与批量代付</div>
+                </div>
+              </div>
+              <div class="ch-card" data-ch="lkl">
+                <div class="ch-logo l">拉卡</div>
+                <div>
+                  <div class="cn">拉卡拉 <span class="chip ok">可注册</span></div>
+                  <div class="cd">微信 / 支付宝 / 云闪付 / 刷卡 · 分账 + 代付</div>
+                </div>
+              </div>
+              <div class="ch-card" data-ch="yspay">
+                <div class="ch-logo e">易生</div>
+                <div>
+                  <div class="cn">易生支付 <span class="chip blue">试运行</span></div>
+                  <div class="cd">微信 / 支付宝 / 云闪付 · 分账能力待验证</div>
+                </div>
+              </div>
+              <div class="ch-card off">
+                <div class="ch-logo a">支付</div>
+                <div>
+                  <div class="cn">支付宝大额 <span class="chip line">暂停新增</span></div>
+                  <div class="cd">仅支付宝（含花呗 / 信用卡）· 单笔限额高、费率 0.6%</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3>商户类型</h3></div>
+            <div class="card card-pad" style="display:flex;gap:10px">
+              <label class="ch-card on" style="flex:1;padding:11px"><input type="radio" name="mt" checked style="margin-right:8px" />个人小微</label>
+              <label class="ch-card" style="flex:1;padding:11px"><input type="radio" name="mt" style="margin-right:8px" />个体工商户</label>
+            </div>
+            <p style="font-size:11px;color:#8a94a6;margin:7px 2px 0">公司企业单位暂不开放（范围说明书 §2.2）</p>
+
+            <div class="form-sec" style="margin-top:14px">
+              <h4>主体资料</h4>
+              <div class="form-grid">
+                <div class="field">
+                  <label>手机号 <span class="req">*</span></label>
+                  <div class="input-unit"><input class="input" value="138 6621 0033" /><span style="color:#07c160">已实名 ✓</span></div>
+                  <p style="font-size:10.5px;color:#8a94a6">调用通道「运营商手机号认证」，自动带出实名信息</p>
+                </div>
+                <div class="field"><label>商户名称 <span class="req">*</span></label><input class="input" value="味知香卤味店" /></div>
+                <div class="field"><label>经营地址 <span class="req">*</span></label><input class="input" value="浙江省宁波市海曙区中山西路 188 号 1-3" /></div>
+                <div class="row-2">
+                  <div class="field"><label>经营类目</label><input class="input" value="餐饮服务 / 熟食" /></div>
+                  <div class="field"><label>门头照 <span class="req">*</span></label><div style="border:1px dashed #cfd8e6;border-radius:11px;padding:11px;text-align:center;font-size:11px;color:#8a94a6">上传</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-sec">
+              <h4>结算账户</h4>
+              <div class="form-grid">
+                <div class="field"><label>结算方式</label><input class="input" value="对私 · 经营者本人储蓄卡" /></div>
+                <div class="field"><label>银行卡号 <span class="req">*</span></label><input class="input" value="6214 **** **** 6621" /></div>
+              </div>
+            </div>
+
+            <div class="form-sec">
+              <h4>电子签名</h4>
+              <div style="border:1px dashed #cfd8e6;border-radius:11px;height:92px;display:grid;place-items:center;font-size:11.5px;color:#8a94a6">
+                手写签名区域（签署《特约商户支付服务协议》）
+              </div>
+            </div>
+
+            <button class="btn" id="submitMch">提交进件</button>
+            <p style="text-align:center;font-size:10.5px;color:#b3bbc8;margin-top:10px">提交后进入「进件 / 签约 / 报备」三态流程</p>
+          </div>
+        </section>
+
+        <!-- ========== 8. 商户详情 ========== -->
+        <section class="mscreen" id="m-mchdetail" data-title="商户详情" data-nav="on" data-tab="">
+          <div class="mp-body">
+            <div class="card card-pad">
+              <div style="display:flex;align-items:center;gap:11px">
+                <div class="thumb" style="width:44px;height:44px;border-radius:13px;background:#f3f6f8;display:grid;place-items:center;font-weight:700">味</div>
+                <div>
+                  <div style="font-size:15px;font-weight:650">味知香卤味店</div>
+                  <div style="font-size:11px;color:#8a94a6;margin-top:4px">银盛 · M8832****0912</div>
+                </div>
+                <span class="chip warn" style="margin-left:auto">报备中</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:13px">
+                <span class="chip line">个人小微</span>
+                <span class="chip line">餐饮 / 熟食</span>
+                <span class="chip line">费率 0.38%</span>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3>三态看板</h3><span>以通道回调为准，可能不同步</span></div>
+            <div class="tri">
+              <div class="step done"><div class="st">进件</div><div class="sv">✓ 已通过</div><div style="font-size:10px;color:#8a94a6;margin-top:4px">11-09 14:22</div></div>
+              <div class="step done"><div class="st">签约</div><div class="sv">✓ 已签约</div><div style="font-size:10px;color:#8a94a6;margin-top:4px">11-09 16:05</div></div>
+              <div class="step wait"><div class="st">报备</div><div class="sv">● 处理中</div><div style="font-size:10px;color:#8a94a6;margin-top:4px">预计 11-12</div></div>
+            </div>
+
+            <div class="sec-title"><h3>关键信息</h3></div>
+            <div class="card card-pad">
+              <div class="subj" style="padding-top:2px"><div><div class="sn">商户号</div></div><div class="sv" style="font-size:12px;font-weight:600">M8832 4471 0912</div></div>
+              <div class="subj"><div><div class="sn">结算账户</div></div><div class="sv" style="font-size:12px;font-weight:600">招商银行 **** 6621</div></div>
+              <div class="subj"><div><div class="sn">归属代理</div></div><div class="sv" style="font-size:12px;font-weight:600">云启支付 / 王海涛</div></div>
+              <div class="subj" style="padding-bottom:2px"><div><div class="sn">门店数</div></div><div class="sv" style="font-size:12px;font-weight:600">1 家</div></div>
+            </div>
+
+            <div class="sec-title"><h3>近 30 天交易</h3><a class="more" href="javascript:;" data-go="m-revenue">全部 ›</a></div>
+            <div class="card card-pad">
+              <div style="display:flex;justify-content:space-between;align-items:flex-end">
+                <div><div style="font-size:11px;color:#8a94a6">交易金额</div><div style="font-size:22px;font-weight:700;margin-top:5px">86,240<small style="font-size:12px;color:#8a94a6">.00 元</small></div></div>
+                <div style="text-align:right"><div style="font-size:11px;color:#8a94a6">笔数</div><div style="font-size:15px;font-weight:650;margin-top:5px">412</div></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:12px">
+                <span class="chip">微信 62%</span><span class="chip">支付宝 31%</span><span class="chip">云闪付 7%</span>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:9px;margin-top:14px">
+              <button class="btn ghost" data-go="m-mchdetail">查看收款码</button>
+              <button class="btn line" data-go="m-mchdetail">停用商户</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 9. 收益 ========== -->
+        <section class="mscreen" id="m-revenue" data-title="收益" data-nav="off" data-tab="rev">
+          <div class="mp-body" style="padding-top:12px">
+            <div class="balance-hero">
+              <div class="k">可提现总额（六科目合计）</div>
+              <div class="v">128,430<small>.50 元</small></div>
+              <div style="display:flex;gap:10px;margin-top:14px">
+                <button class="btn sm" style="background:#07c160;color:#fff;flex:1" data-go="m-withdraw">提现</button>
+                <button class="btn sm ghost" style="flex:1;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18);color:#fff">收益明细</button>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3>六科目余额</h3><span>各自独立提现</span></div>
+            <div class="card card-pad" style="padding-top:4px;padding-bottom:4px">
+              <div class="subj">
+                <div class="si">日</div>
+                <div><div class="sn">日结分润</div><div class="sd">T+1 日终结算</div></div>
+                <div class="sv">62,180.20<small>可提现</small></div>
+              </div>
+              <div class="subj">
+                <div class="si">月</div>
+                <div><div class="sn">月结分润</div><div class="sd">按自然月结算</div></div>
+                <div class="sv">38,902.10<small>可提现</small></div>
+              </div>
+              <div class="subj">
+                <div class="si">奖</div>
+                <div><div class="sn">日结奖励</div><div class="sd">按政策日结</div></div>
+                <div class="sv">9,640.00<small>可提现</small></div>
+              </div>
+              <div class="subj">
+                <div class="si">奖</div>
+                <div><div class="sn">月结奖励</div><div class="sd">按政策月结</div></div>
+                <div class="sv">12,308.20<small>可提现</small></div>
+              </div>
+              <div class="subj">
+                <div class="si">分</div>
+                <div><div class="sn">分成奖励</div><div class="sd">下级交易分成</div></div>
+                <div class="sv">5,400.00<small>可提现</small></div>
+              </div>
+              <div class="subj">
+                <div class="si">增</div>
+                <div><div class="sn">增值收益 <span class="chip line">待确认</span></div><div class="sd">首版是否纳入待甲方确认</div></div>
+                <div class="sv" style="color:#8a94a6">—<small>未开通</small></div>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3>最近流水</h3></div>
+            <div class="card card-pad" style="padding-top:2px">
+              <div class="tx">
+                <div class="ti" style="background:#e8f8ef;color:#067a43">日</div>
+                <div><div class="tn">日结分润 · 11-10 账期</div><div class="td">412 笔交易 · 对账无误</div></div>
+                <div class="tv" style="color:#067a43">+1,286.40</div>
+              </div>
+              <div class="tx">
+                <div class="ti" style="background:#eef3ff;color:#1d4ed8">分</div>
+                <div><div class="tn">下级分成 · 悦刻便利店</div><div class="td">A0187 · 11-10</div></div>
+                <div class="tv" style="color:#067a43">+186.20</div>
+              </div>
+              <div class="tx">
+                <div class="ti" style="background:#fdeeee;color:#b91c1c">退</div>
+                <div><div class="tn">退款冲减 · 味知香卤味店</div><div class="td">订单 T2026110900128</div></div>
+                <div class="tv" style="color:#b91c1c">−24.60</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 10. 提现 ========== -->
+        <section class="mscreen" id="m-withdraw" data-title="提现" data-nav="on" data-tab="">
+          <div class="mp-body">
+            <div class="amount-box">
+              <div style="font-size:11.5px;color:#8a94a6">提现金额（元）</div>
+              <div class="amount-input">
+                <b>¥</b><input id="wdAmount" inputmode="decimal" value="5000" />
+              </div>
+              <div class="amount-meta">
+                <span>可提现 62,180.20 元</span>
+                <span style="color:#07c160;font-weight:600" id="wdAll">全部提现</span>
+              </div>
+
+              <div class="calc">
+                <div class="r"><span>提现手续费 <span class="chip line">费率待确认</span></span><b id="wdFee">403.00</b></div>
+                <div class="r"><span>计费规则</span><span style="font-size:11px">8% + 3 元/笔（演示）</span></div>
+                <div class="r total"><span>预计到账</span><b id="wdNet">4,597.00</b></div>
+              </div>
+            </div>
+
+            <div class="sec-title"><h3>提现方式</h3></div>
+            <div class="card card-pad">
+              <div style="display:flex;gap:12px;align-items:center">
+                <div class="thumb" style="width:40px;height:40px;border-radius:11px;background:#eef3ff;display:grid;place-items:center;font-size:15px">💳</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600">招商银行 · 储蓄卡</div>
+                  <div style="font-size:11px;color:#8a94a6;margin-top:4px">王海涛 · **** 8899 · 对私</div>
+                </div>
+                <span class="chip blue" style="margin-left:auto">切换</span>
+              </div>
+            </div>
+
+            <div class="note" style="margin-top:12px">
+              <span>ℹ️</span>
+              <span>提现走通道「批量代付」，预计 <b>T+1 到账</b>。单笔最低 100 元，最高 20,000 元（参数后台可配）；需运营人工审批后发起代付。</span>
+            </div>
+
+            <button class="btn" style="margin-top:14px" id="wdSubmit">提交提现申请</button>
+
+            <div class="sec-title"><h3>提现记录</h3></div>
+            <div class="card card-pad" style="padding-top:2px">
+              <div class="tx">
+                <div class="ti" style="background:#e8f8ef;color:#067a43">✓</div>
+                <div><div class="tn">提现 3,000.00 元</div><div class="td">11-08 · 日结分润 · 已到账</div></div>
+                <div class="tv" style="font-size:12px;color:#067a43">成功</div>
+              </div>
+              <div class="tx">
+                <div class="ti" style="background:#fef6e7;color:#a35c05">●</div>
+                <div><div class="tn">提现 1,200.00 元</div><div class="td">11-10 · 月结分润 · 审批中</div></div>
+                <div class="tv" style="font-size:12px;color:#a35c05">处理中</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== 11. 我的 ========== -->
+        <section class="mscreen" id="m-mine" data-title="我的" data-nav="off" data-tab="mine">
+          <div class="mp-body" style="padding-top:12px">
+            <div class="card card-pad" style="display:flex;gap:12px;align-items:center">
+              <div class="avatar" style="width:52px;height:52px;font-size:16px">云启</div>
+              <div>
+                <div style="font-size:16px;font-weight:650">王海涛</div>
+                <div style="font-size:11.5px;color:#8a94a6;margin-top:4px">A0182 · 华东大区 · 已实名</div>
+              </div>
+              <span class="chip ok" style="margin-left:auto">正常</span>
+            </div>
+
+            <div class="card card-pad" style="margin-top:10px;padding-top:2px;padding-bottom:2px">
+              <div class="subj"><div class="si">👤</div><div><div class="sn">个人资料</div><div class="sd">头像、昵称、手机号</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+              <div class="subj"><div class="si">💳</div><div><div class="sn">结算卡</div><div class="sd">变更需审核</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+              <div class="subj"><div class="si">💰</div><div><div class="sn">我的钱包</div><div class="sd">六科目余额</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+              <div class="subj"><div class="si">🎟️</div><div><div class="sn">我的推荐码</div><div class="sd">YQ-8823-KL</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+              <div class="subj"><div class="si">📄</div><div><div class="sn">我的政策</div><div class="sd">费率与奖励规则</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+              <div class="subj"><div class="si">🛟</div><div><div class="sn">服务中心</div><div class="sd">客服、隐私政策</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></div>
+            </div>
+
+            <button class="btn ghost" style="margin-top:14px;color:#b91c1c" data-go="m-splash">退出登录</button>
+            <p style="text-align:center;font-size:10.5px;color:#b3bbc8;margin-top:14px">原型 v0.1 · 所有数据为演示数据</p>
+          </div>
+        </section>
+
+        <!-- tabbar -->
+        <nav class="tabbar" id="tabbar" style="display:none">
+          <a href="javascript:;" data-go="m-home" data-tab="home"><span class="ti">⌂</span>首页</a>
+          <a href="javascript:;" data-go="m-merchants" data-tab="mch"><span class="ti">▤</span>商户</a>
+          <a href="javascript:;" data-go="m-revenue" data-tab="rev"><span class="ti">◔</span>收益</a>
+          <a href="javascript:;" data-go="m-mine" data-tab="mine"><span class="ti">☺</span>我的</a>
+        </nav>
+
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/mobile.js"></script>
+</body>
+</html>
