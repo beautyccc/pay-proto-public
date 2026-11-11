@@ -80,7 +80,17 @@ console.log(document.querySelectorAll('#mineBody .subj-btn[data-locked]').length
 
 - 推送：`main`（GitHub Pages，`pages build and deployment`）。
 - 地址：https://beautyccc.github.io/pay-proto-public/
-- 交付 commit / Pages 生效时间 / HTTP 状态：**见本节回填（第二次提交）**。
+- 交付 commit：`b439ec6`（基线 `aaa7bda`，已 rebase 到 `4b30f5a` 之上）。
+- Pages 生效：2026-11-11 18:29（推送后约 30 秒）。
+- HTTP 状态（带缓存穿透参数实测）：
+
+```text
+index.html       http=200  bytes=31396   （含 #m-profile）
+assets/mobile.js  http=200  bytes=134597  （与工作区一致）
+assets/style.css  http=200  bytes=66196   （与工作区一致）
+```
+
+- 线上自查：`#mineBody .subj-btn` 共 6 行，停用态 5 行 `data-locked`，控制台无报错。
 
 ## 5. 影响四项
 
