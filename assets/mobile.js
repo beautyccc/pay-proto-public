@@ -174,6 +174,29 @@
     submitting: false
   };
   var QR = { merchantId: null, storeId: null, template: 'lipai', generating: false };
+  // 「我的」模块状态：全部为演示数据；改名 / 换卡 / 换手机号只进入「审核中」，不直接生效
+  var MINE = {
+    name: '王海涛',
+    nickname: '王海涛',
+    agentNo: 'A0182',
+    invite: 'YQ-8823-KL',
+    region: '华东大区',
+    avatar: '云启',
+    avatarTone: 'green',
+    phone: '138****6621',
+    realname: '已实名',
+    idNo: '3302**********0018',
+    bank: '招商银行',
+    cardType: '储蓄卡',
+    cardMasked: '6225 **** **** 8899',
+    cardTail: '8899',
+    cardStatus: '正常',
+    cardPending: null,
+    profilePending: null,
+    phonePending: null,
+    infoApplies: [],
+    saving: false
+  };
 
   function toast(msg) {
     toastEl.textContent = msg;
@@ -293,6 +316,8 @@
     if (id === 'm-pending') renderPending();
     if (id === 'm-revenue') renderRevenue();
     if (id === 'm-withdraw') renderWithdraw();
+    if (id === 'm-mine') renderMine();
+    if (id === 'm-profile') renderProfile();
     if (id === 'm-register') applyRegState();
   }
 
@@ -885,6 +910,205 @@
       QR.storeId = s ? s.id : null;
     }
   }
+  /* 推荐码二维码：字节模式 / 纠错等级 M / 版本 1–9 / 固定掩码 0。
+     不依赖三方库，生成结果可被常见扫码器识别；仅用于展示推荐码。 */
+  function qrEncode(text) {
+    var ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22];
+    var NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5];
+    var ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46]];
+
+    var bytes = [];
+    for (var i = 0; i < text.length; i++) {
+      var cp = text.charCodeAt(i);
+      if (cp < 0x80) bytes.push(cp);
+      else if (cp < 0x800) bytes.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
+      else bytes.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    }
+
+    var version = 0;
+    for (var v = 1; v <= 9; v++) {
+      var raw = (16 * v + 128) * v + 64;
+      if (v >= 2) {
+        var na = Math.floor(v / 7) + 2;
+        raw -= (25 * na - 10) * na - 55;
+        if (v >= 7) raw -= 36;
+      }
+      var total = Math.floor(raw / 8);
+      if (bytes.length + 2 <= total - ECC_PER_BLOCK[v] * NUM_BLOCKS[v]) { version = v; break; }
+    }
+    if (!version) throw new Error('推荐码内容过长');
+
+    var rawBits = (16 * version + 128) * version + 64;
+    if (version >= 2) {
+      var na2 = Math.floor(version / 7) + 2;
+      rawBits -= (25 * na2 - 10) * na2 - 55;
+      if (version >= 7) rawBits -= 36;
+    }
+    var totalCodewords = Math.floor(rawBits / 8);
+    var dataCodewords = totalCodewords - ECC_PER_BLOCK[version] * NUM_BLOCKS[version];
+
+    var bits = [];
+    var put = function (val, len) {
+      for (var k = len - 1; k >= 0; k--) bits.push((val >>> k) & 1);
+    };
+    put(4, 4);                    // 字节模式
+    put(bytes.length, 8);         // 版本 1–9 使用 8 位长度
+    for (var b = 0; b < bytes.length; b++) put(bytes[b], 8);
+    var capBits = dataCodewords * 8;
+    for (var t = 0; t < 4 && bits.length < capBits; t++) bits.push(0);
+    while (bits.length % 8 !== 0) bits.push(0);
+    var data = [];
+    for (var i2 = 0; i2 < bits.length; i2 += 8) {
+      var byteVal = 0;
+      for (var j = 0; j < 8; j++) byteVal = (byteVal << 1) | bits[i2 + j];
+      data.push(byteVal);
+    }
+    for (var pad = 0; data.length < dataCodewords; pad++) data.push(pad % 2 === 0 ? 0xec : 0x11);
+
+    // GF(256) 与 Reed–Solomon 纠错
+    var exp = new Array(512), log = new Array(256);
+    var x = 1;
+    for (var e = 0; e < 255; e++) {
+      exp[e] = x; log[x] = e;
+      x <<= 1;
+      if (x & 0x100) x ^= 0x11d;
+    }
+    for (var e2 = 255; e2 < 512; e2++) exp[e2] = exp[e2 - 255];
+    var mul = function (a, c) { return (a === 0 || c === 0) ? 0 : exp[log[a] + log[c]]; };
+
+    var ecLen = ECC_PER_BLOCK[version];
+    var gen = [1];
+    var root = 1;
+    for (var g = 0; g < ecLen; g++) {
+      var next = new Array(gen.length + 1).fill(0);
+      for (var k2 = 0; k2 < gen.length; k2++) {
+        next[k2] ^= gen[k2];
+        next[k2 + 1] ^= mul(gen[k2], root);
+      }
+      gen = next;
+      root = mul(root, 2);
+    }
+    var eccFor = function (block) {
+      var rem = new Array(ecLen).fill(0);
+      for (var i3 = 0; i3 < block.length; i3++) {
+        var factor = block[i3] ^ rem.shift();
+        rem.push(0);
+        for (var j2 = 0; j2 < ecLen; j2++) rem[j2] ^= mul(gen[j2 + 1], factor);
+      }
+      return rem;
+    };
+
+    var numBlocks = NUM_BLOCKS[version];
+    var numShort = numBlocks - totalCodewords % numBlocks;
+    var shortLen = Math.floor(totalCodewords / numBlocks);
+    var blocks = [];
+    var offset = 0;
+    for (var bi = 0; bi < numBlocks; bi++) {
+      var dataLen = shortLen - ecLen + (bi < numShort ? 0 : 1);
+      var dat = data.slice(offset, offset + dataLen);
+      offset += dataLen;
+      var ecc = eccFor(dat);
+      if (bi < numShort) dat.push(0);     // 短块占位，交织时跳过
+      blocks.push(dat.concat(ecc));
+    }
+    var codewords = [];
+    for (var ci = 0; ci < blocks[0].length; ci++) {
+      for (var bj = 0; bj < blocks.length; bj++) {
+        if (ci !== shortLen - ecLen || bj >= numShort) codewords.push(blocks[bj][ci]);
+      }
+    }
+
+    // 矩阵与功能图形
+    var size = version * 4 + 17;
+    var mod = [], fn = [];
+    for (var y = 0; y < size; y++) {
+      mod[y] = []; fn[y] = [];
+      for (var x2 = 0; x2 < size; x2++) { mod[y][x2] = false; fn[y][x2] = false; }
+    }
+    var set = function (x3, y3, dark) { mod[y3][x3] = dark; fn[y3][x3] = true; };
+    for (var i4 = 0; i4 < size; i4++) {
+      set(6, i4, i4 % 2 === 0);
+      set(i4, 6, i4 % 2 === 0);
+    }
+    var finder = function (cx, cy) {
+      for (var dy = -4; dy <= 4; dy++) {
+        for (var dx = -4; dx <= 4; dx++) {
+          var xx = cx + dx, yy = cy + dy;
+          if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue;
+          var dist = Math.max(Math.abs(dx), Math.abs(dy));
+          set(xx, yy, dist !== 2 && dist !== 4);
+        }
+      }
+    };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+
+    var align = ALIGN[version];
+    for (var a = 0; a < align.length; a++) {
+      for (var b2 = 0; b2 < align.length; b2++) {
+        var ax = align[a], ay = align[b2];
+        if ((ax === 6 && ay === 6) || (ax === 6 && ay === size - 7) || (ax === size - 7 && ay === 6)) continue;
+        for (var dy2 = -2; dy2 <= 2; dy2++) {
+          for (var dx2 = -2; dx2 <= 2; dx2++) {
+            set(ax + dx2, ay + dy2, Math.max(Math.abs(dx2), Math.abs(dy2)) !== 1);
+          }
+        }
+      }
+    }
+
+    var drawFormat = function (mask) {
+      var dataBits = mask; // 纠错等级 M 的格式位为 00
+      var rem = dataBits;
+      for (var i5 = 0; i5 < 10; i5++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      var fmt = ((dataBits << 10) | rem) ^ 0x5412;
+      var get = function (i6) { return ((fmt >>> i6) & 1) !== 0; };
+      for (var i7 = 0; i7 <= 5; i7++) set(8, i7, get(i7));
+      set(8, 7, get(6)); set(8, 8, get(7)); set(7, 8, get(8));
+      for (var i8 = 9; i8 < 15; i8++) set(14 - i8, 8, get(i8));
+      for (var i9 = 0; i9 < 8; i9++) set(size - 1 - i9, 8, get(i9));
+      for (var i10 = 8; i10 < 15; i10++) set(8, size - 15 + i10, get(i10));
+      set(8, size - 8, true);
+    };
+    drawFormat(0);
+
+    if (version >= 7) {
+      var rem2 = version;
+      for (var i11 = 0; i11 < 12; i11++) rem2 = (rem2 << 1) ^ ((rem2 >>> 11) * 0x1f25);
+      var verBits = (version << 12) | rem2;
+      for (var i12 = 0; i12 < 18; i12++) {
+        var vbit = ((verBits >>> i12) & 1) !== 0;
+        var aa = size - 11 + i12 % 3, bb = Math.floor(i12 / 3);
+        set(aa, bb, vbit); set(bb, aa, vbit);
+      }
+    }
+
+    // 之字形放置数据位
+    var bitIndex = 0;
+    var totalBits = codewords.length * 8;
+    for (var right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (var vert = 0; vert < size; vert++) {
+        for (var j3 = 0; j3 < 2; j3++) {
+          var x4 = right - j3;
+          var upward = ((right + 1) & 2) === 0;
+          var y4 = upward ? size - 1 - vert : vert;
+          if (!fn[y4][x4] && bitIndex < totalBits) {
+            mod[y4][x4] = ((codewords[bitIndex >>> 3] >>> (7 - (bitIndex & 7))) & 1) !== 0;
+            bitIndex++;
+          }
+        }
+      }
+    }
+
+    for (var y5 = 0; y5 < size; y5++) {
+      for (var x5 = 0; x5 < size; x5++) {
+        if (!fn[y5][x5] && (x5 + y5) % 2 === 0) mod[y5][x5] = !mod[y5][x5];
+      }
+    }
+    drawFormat(0);
+
+    return { size: size, modules: mod, version: version };
+  }
+
   function qrSvg(seedText) {
     var size = 25;
     var seed = 0;
@@ -1160,6 +1384,505 @@
     }
     if (line) lines.push(line);
     lines.forEach(function (l, i) { ctx.fillText(l, x, y + i * lineHeight); });
+  }
+
+  // ---------------------------------------------------------------- 我的（MP-120～127）
+  function nickLen(value) { return Array.from(String(value || '')).length; }
+
+  function mineState() { return pageState['m-mine'] || 'default'; }
+
+  function mineChip() {
+    var s = mineState();
+    if (s === 'rejected') return '<span class="chip danger">审核未通过</span>';
+    if (s === 'stopped') return '<span class="chip line">已停用</span>';
+    return '<span class="chip ok">正常</span>';
+  }
+
+  function mineCardNote() { return MINE.cardPending ? '变更审核中' : '变更需审核'; }
+
+  function mineRow(k, v, extra) {
+    return '<div class="subj"><div><div class="sn">' + esc(k) + '</div></div>' +
+      '<div class="sv mine-sv">' + v + (extra || '') + '</div></div>';
+  }
+
+  function mineMenuSkeleton() {
+    var rows = '';
+    for (var i = 0; i < 6; i++) {
+      rows += '<div class="mine-sk-row"><div class="sk"></div><div class="sk-main">' +
+        '<div class="sk sk-line w60"></div><div class="sk sk-line w40"></div></div></div>';
+    }
+    return '<div class="card card-pad mine-menu">' + rows + '</div>';
+  }
+
+  function mineMenu(stopped, rejected) {
+    var rows = [
+      { icon: '👤', title: '个人资料', desc: '头像、昵称、手机号', target: 'data-act="mine-profile"', dot: rejected },
+      { icon: '💳', title: '结算卡', desc: mineCardNote(), target: 'data-act="mine-card"' },
+      { icon: '💰', title: '我的钱包', desc: '六科目余额', target: 'data-go="m-revenue"' },
+      { icon: '🎟️', title: '我的推荐码', desc: MINE.invite, target: 'data-act="mine-invite"' },
+      { icon: '📄', title: '我的政策', desc: '费率与奖励规则', target: 'data-act="mine-policy"' },
+      { icon: '🛟', title: '服务中心', desc: '客服、隐私政策、公众号', target: 'data-act="mine-service"' }
+    ];
+    return '<div class="card card-pad mine-menu">' + rows.map(function (r) {
+      var locked = stopped && r.title !== '服务中心';
+      var target = locked ? 'data-locked="账号已停用，请联系上级代理"' : r.target;
+      return '<button type="button" class="subj subj-btn' + (locked ? ' is-off' : '') + '" ' + target + '>' +
+        '<div class="si">' + r.icon + '</div><div><div class="sn">' + esc(r.title) +
+        (r.dot ? ' <i class="mine-dot" aria-label="待处理"></i>' : '') + '</div>' +
+        '<div class="sd">' + esc(r.desc) + '</div></div>' +
+        '<div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>';
+    }).join('') + '</div>';
+  }
+
+  function renderMine() {
+    var body = $('#mineBody');
+    if (!body) return;
+    var state = mineState();
+    var loading = state === 'loading';
+    var rejected = state === 'rejected';
+    var stopped = state === 'stopped';
+    var err = state === 'error';
+
+    var banner = '';
+    if (rejected) {
+      banner = '<div class="banner danger"><b>实名审核未通过</b><p>请修改被驳回的资料后重新提交；审核通过前，部分业务功能仍受限。</p>' +
+        '<div class="banner-actions"><button type="button" class="btn sm danger-solid" data-act="mine-profile">去处理</button></div></div>';
+    } else if (stopped) {
+      banner = '<div class="banner gray"><b>账号已停用</b><p>账号已停用，请联系上级代理。除「服务中心」「退出登录」外，其他功能暂不可用。</p></div>';
+    }
+
+    var head = '';
+    if (loading) {
+      head = '<div class="sk-card" style="margin-bottom:10px"><div class="sk sk-avatar"></div><div class="sk-main">' +
+        '<div class="sk sk-line w50"></div><div class="sk sk-line w40"></div></div></div>';
+    } else if (err) {
+      head = stateError('资料加载失败', 'mine-retry');
+    } else {
+      head = '<div class="card card-pad"><button type="button" class="mine-head" data-act="mine-profile"' +
+        (stopped ? ' data-locked="账号已停用，请联系上级代理"' : '') + '>' +
+        '<div class="avatar av-' + MINE.avatarTone + '" style="width:52px;height:52px;font-size:16px">' + esc(MINE.avatar) + '</div>' +
+        '<div class="mine-head-main"><div class="mine-name">' + esc(MINE.nickname) + ' ' + mineChip() + '</div>' +
+        '<div class="mine-meta">' + esc(MINE.agentNo) + ' · ' + esc(MINE.region) + ' · ' + esc(MINE.realname) + '</div></div>' +
+        '<span class="mine-arrow">›</span></button></div>';
+    }
+
+    body.innerHTML = banner + head + (loading ? mineMenuSkeleton() : mineMenu(stopped, rejected)) +
+      '<button class="btn ghost" style="margin-top:14px;color:#b91c1c" id="logoutBtn">退出登录</button>' +
+      '<p style="text-align:center;font-size:10.5px;color:#b3bbc8;margin-top:14px">原型 v0.2 · 所有数据为演示数据</p>';
+
+    var logout = $('#logoutBtn');
+    if (logout) logout.addEventListener('click', openLogoutSheet);
+  }
+
+  function pendingBanners() {
+    var out = '';
+    if (MINE.profilePending) {
+      out += '<div class="banner warn"><b>' + esc(MINE.profilePending.title) + '</b><p>' +
+        esc(MINE.profilePending.desc) + ' · 提交于 ' + esc(MINE.profilePending.at) + '</p></div>';
+    }
+    if (MINE.phonePending) {
+      out += '<div class="banner warn"><b>手机号修改审核中</b><p>新号码 ' + esc(MINE.phonePending.mask) +
+        '，审核通过后生效 · 提交于 ' + esc(MINE.phonePending.at) + '</p></div>';
+    }
+    if (MINE.cardPending) {
+      out += '<div class="banner warn"><b>结算卡变更审核中</b><p>' + esc(MINE.cardPending.bank) + ' ' +
+        esc(MINE.cardPending.masked) + ' · 提交于 ' + esc(MINE.cardPending.at) +
+        '；审核期间原卡继续用于结算。</p></div>';
+    }
+    if (MINE.infoApplies.length) {
+      var last = MINE.infoApplies[MINE.infoApplies.length - 1];
+      out += '<div class="banner gray"><b>实名信息修改申请已提交</b><p>' + esc(last.field) + ' · 提交于 ' +
+        esc(last.at) + '，审核结果将通过服务通知告知。</p></div>';
+    }
+    return out;
+  }
+
+  function renderProfile() {
+    var el = $('#profileBody');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="card card-pad mine-profile">' +
+      '<div class="avatar avatar-lg av-' + MINE.avatarTone + '">' + esc(MINE.avatar) + '</div>' +
+      '<div class="mine-profile-main"><div class="mine-name">' + esc(MINE.nickname) + ' <span class="chip ok">已实名</span></div>' +
+      '<div class="mine-meta">编号 ' + esc(MINE.agentNo) + ' · ' + esc(MINE.region) + '</div></div>' +
+      '<button type="button" class="link-quiet green" data-act="mine-avatar">更换头像</button></div>' +
+      pendingBanners() +
+      '<div class="sec-title"><h3>基础资料</h3><span>修改后需审核</span></div>' +
+      '<div class="card card-pad">' +
+      '<div class="field"><label>昵称 <span class="req">*</span></label>' +
+      '<input class="input" id="mineNick" value="' + esc(MINE.nickname) + '" placeholder="1–20 个字" autocomplete="off" />' +
+      '<p class="field-hint">1–20 个字；保存后提交审核，审核通过前仍显示原昵称。' +
+      '<span id="nickCount" style="float:right">' + nickLen(MINE.nickname) + '/20</span></p>' +
+      '<p class="field-err" id="nickErr"></p></div>' +
+      '<button type="button" class="btn sm" style="width:100%;margin-top:6px" data-act="mine-nick-save">保存昵称</button>' +
+      '</div>' +
+      '<div class="sec-title"><h3>账号信息</h3><span>只读</span></div>' +
+      '<div class="card card-pad">' +
+      mineRow('手机号', esc(MINE.phone), '<button type="button" class="link-quiet" data-act="mine-phone">修改</button>') +
+      mineRow('代理编号', esc(MINE.agentNo)) +
+      mineRow('实名状态', esc(MINE.realname) + ' <span class="chip ok">已认证</span>') +
+      mineRow('所属大区', esc(MINE.region)) +
+      '</div>' +
+      '<div class="sec-title"><h3>个人信息</h3><span class="chip line">修改需审核</span></div>' +
+      '<div class="card card-pad">' +
+      mineRow('姓名', esc(MINE.name)) +
+      mineRow('身份证号', '<span class="mono">' + esc(MINE.idNo) + '</span>') +
+      mineRow('结算卡', '<span class="mono">' + esc(MINE.cardMasked) + '</span>') +
+      mineRow('开户行', esc(MINE.bank)) +
+      '<p class="mine-note">姓名、证件与结算卡属于实名信息，页面只读；如需修改请提交申请，由运营审核后变更。</p>' +
+      '<button type="button" class="btn ghost sm" style="width:100%;margin-top:10px" data-act="mine-info-apply">提交修改申请</button>' +
+      '</div>' +
+      '<p class="mine-note" style="text-align:center">演示数据 · 修改不会写入真实系统</p>';
+  }
+
+  function saveNickname() {
+    var input = $('#mineNick'), err = $('#nickErr');
+    if (!input || !err) return;
+    var val = input.value.trim();
+    var len = nickLen(val);
+    input.classList.remove('err');
+    if (!len) { err.textContent = '昵称不能为空'; input.classList.add('err'); input.focus(); return; }
+    if (len > 20) { err.textContent = '昵称最多 20 个字，当前 ' + len + ' 个字'; input.classList.add('err'); input.focus(); return; }
+    err.textContent = '';
+    if (val === MINE.nickname) { toast('昵称未修改'); return; }
+    MINE.profilePending = { title: '昵称修改已提交审核', desc: '新昵称「' + val + '」审核通过后生效', at: nowText() };
+    renderProfile();
+    toast('昵称修改已提交审核');
+  }
+
+  function openPhoneSheet() {
+    openSheet(
+      '<p class="sheet-lead">当前手机号 ' + esc(MINE.phone) + '。修改后需运营审核，审核期间原手机号仍可登录。</p>' +
+      '<div class="field"><label>新手机号 <span class="req">*</span></label>' +
+      '<input class="input" id="newPhone" inputmode="numeric" autocomplete="off" placeholder="11 位手机号" />' +
+      '<p class="field-err" id="phoneErr"></p></div>',
+      { title: '修改手机号', footer: '<button class="btn ghost" data-act="sheet-close">取消</button><button class="btn" data-act="mine-phone-save">提交审核</button>' }
+    );
+  }
+
+  function savePhone() {
+    var el = $('#newPhone'), err = $('#phoneErr');
+    if (!el || !err) return;
+    var v = el.value.replace(/\s/g, '');
+    el.classList.remove('err');
+    if (!/^1[3-9]\d{9}$/.test(v)) {
+      err.textContent = '请输入有效的 11 位手机号';
+      el.classList.add('err'); el.focus(); return;
+    }
+    if (v.slice(0, 3) + '****' + v.slice(7) === MINE.phone) {
+      err.textContent = '新手机号与当前手机号相同'; el.classList.add('err'); el.focus(); return;
+    }
+    MINE.phonePending = { mask: v.slice(0, 3) + '****' + v.slice(7), at: nowText() };
+    closeSheet();
+    renderProfile();
+    toast('手机号修改已提交审核');
+  }
+
+  function openInfoApplySheet() {
+    openSheet(
+      '<p class="sheet-lead">实名信息修改需运营审核。请选择项目并说明原因，审核通过后由运营变更。</p>' +
+      '<div class="field"><label>修改项目 <span class="req">*</span></label>' +
+      '<select class="select" id="infoField"><option>姓名</option><option>身份证号</option><option>结算卡</option></select></div>' +
+      '<div class="field"><label>修改说明 <span class="req">*</span></label>' +
+      '<textarea class="textarea" id="infoReason" rows="3" placeholder="请说明修改原因（5–100 字）"></textarea>' +
+      '<p class="field-err" id="infoErr"></p></div>' +
+      '<div class="note"><span>ℹ️</span><span>涉及姓名 / 证件变更时，运营可能要求补充证明材料。</span></div>',
+      { title: '提交修改申请', footer: '<button class="btn ghost" data-act="sheet-close">取消</button><button class="btn" data-act="mine-info-save">提交申请</button>' }
+    );
+  }
+
+  function saveInfoApply() {
+    var field = $('#infoField'), reason = $('#infoReason'), err = $('#infoErr');
+    if (!field || !reason || !err) return;
+    var text = reason.value.trim();
+    var len = nickLen(text);
+    reason.classList.remove('err');
+    if (len < 5) { err.textContent = '修改说明至少 5 个字'; reason.classList.add('err'); reason.focus(); return; }
+    if (len > 100) { err.textContent = '修改说明最多 100 个字'; reason.classList.add('err'); reason.focus(); return; }
+    MINE.infoApplies.push({ field: field.value, reason: text, at: nowText(), status: '审核中' });
+    closeSheet();
+    renderProfile();
+    toast('修改申请已提交，审核结果将通过服务通知告知');
+  }
+
+  function openAvatarSheet() {
+    var opts = [['云启', 'green'], ['王', 'blue'], ['海', 'orange'], ['涛', 'violet']];
+    var html = '<p class="sheet-lead">演示环境提供 4 个头像。正式环境从相册选择，并做图片内容安全检测。</p>' +
+      '<div class="avatar-grid">' + opts.map(function (o) {
+        var on = o[0] === MINE.avatar && o[1] === MINE.avatarTone;
+        return '<button type="button" class="avatar-opt' + (on ? ' on' : '') + '" data-act="mine-avatar-pick" data-val="' + o[0] + '" data-tone="' + o[1] + '">' +
+          '<span class="avatar av-' + o[1] + '">' + o[0] + '</span><span>' + (on ? '当前' : '选择') + '</span></button>';
+      }).join('') + '</div>';
+    openSheet(html, { title: '更换头像', footer: '<button class="btn ghost" data-act="sheet-close">取消</button>' });
+  }
+
+  function cardStatusChip() {
+    if (MINE.cardPending) return '<span class="chip warn">审核中</span>';
+    return '<span class="chip ok">正常</span>';
+  }
+
+  function openCardSheet() {
+    openSheet(
+      '<div class="card-view">' +
+      '<div class="card-view-top"><div class="card-bank">' + esc(MINE.bank) + ' · ' + esc(MINE.cardType) + '</div>' +
+      '<span class="card-state">' + cardStatusChip() + '</span></div>' +
+      '<div class="card-no mono">' + esc(MINE.cardMasked) + '</div>' +
+      '<div class="card-meta">户名 ' + esc(MINE.name) + ' · 对私储蓄卡</div></div>' +
+      (MINE.cardPending
+        ? '<div class="banner warn"><b>变更审核中</b><p>新卡 ' + esc(MINE.cardPending.bank) + ' ' + esc(MINE.cardPending.masked) +
+          ' 提交于 ' + esc(MINE.cardPending.at) + '。审核期间原卡继续用于结算。</p></div>'
+        : '<div class="banner gray"><b>变更需审核</b><p>结算卡变更由运营核验，审核通过后生效；审核期间原卡继续用于结算。</p></div>') +
+      '<p class="sheet-lead">页面仅展示卡号后四位，完整卡号不在前端留存。</p>',
+      {
+        title: '结算卡',
+        footer: '<button class="btn ghost" data-act="sheet-close">关闭</button>' +
+          (MINE.cardPending ? '' : '<button class="btn" data-act="mine-card-change">变更结算卡</button>')
+      }
+    );
+  }
+
+  function openCardForm() {
+    var banks = ['招商银行', '中国工商银行', '中国建设银行', '中国农业银行', '宁波银行'];
+    openSheet(
+      '<p class="sheet-lead">仅支持本人（对私）储蓄卡；卡号与户名须与实名信息一致。提交后进入审核，不会立即生效。</p>' +
+      '<div class="field"><label>开户行 <span class="req">*</span></label><select class="select" id="cardBank">' +
+      banks.map(function (b) { return '<option' + (b === MINE.bank ? ' selected' : '') + '>' + b + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label>卡号 <span class="req">*</span></label>' +
+      '<input class="input mono" id="cardNo" inputmode="numeric" autocomplete="off" placeholder="16–19 位银行卡号" />' +
+      '<p class="field-err" id="cardNoErr"></p></div>' +
+      '<div class="field"><label>户名 <span class="req">*</span></label>' +
+      '<input class="input" id="cardName" value="' + esc(MINE.name) + '" autocomplete="off" />' +
+      '<p class="field-err" id="cardNameErr"></p></div>' +
+      '<div class="field"><label>银行预留手机号 <span class="req">*</span></label>' +
+      '<input class="input" id="cardPhone" inputmode="numeric" autocomplete="off" placeholder="11 位手机号" />' +
+      '<p class="field-err" id="cardPhoneErr"></p></div>' +
+      '<div class="note"><span>🔒</span><span>演示环境不校验银行四要素；正式环境由服务端完成鉴权与卡号加密存储。</span></div>',
+      { title: '变更结算卡', footer: '<button class="btn ghost" data-act="sheet-close">取消</button><button class="btn" data-act="mine-card-save">提交审核</button>' }
+    );
+  }
+
+  function cardDigits(value) { return String(value || '').replace(/[\s-]/g, ''); }
+
+  function saveCard() {
+    var bank = $('#cardBank'), no = $('#cardNo'), name = $('#cardName'), phone = $('#cardPhone');
+    var eNo = $('#cardNoErr'), eName = $('#cardNameErr'), ePhone = $('#cardPhoneErr');
+    if (!bank || !no || !name || !phone || !eNo || !eName || !ePhone) return;
+    [no, name, phone].forEach(function (el) { el.classList.remove('err'); });
+    eNo.textContent = ''; eName.textContent = ''; ePhone.textContent = '';
+    var ok = true;
+
+    var digits = cardDigits(no.value);
+    if (!digits) { eNo.textContent = '请输入银行卡号'; no.classList.add('err'); ok = false; }
+    else if (!/^\d{16,19}$/.test(digits)) { eNo.textContent = '卡号应为 16–19 位数字，请核对后重试'; no.classList.add('err'); ok = false; }
+    else if (!/^[4-6]/.test(digits)) { eNo.textContent = '卡号首位应为 4–6，请确认是否为本人的银联储蓄卡'; no.classList.add('err'); ok = false; }
+
+    var nm = name.value.trim();
+    if (!nm) { eName.textContent = '请输入户名'; name.classList.add('err'); ok = false; }
+    else if (nm !== MINE.name) { eName.textContent = '户名须与实名姓名「' + MINE.name + '」一致'; name.classList.add('err'); ok = false; }
+
+    var ph = phone.value.replace(/\s/g, '');
+    if (!/^1[3-9]\d{9}$/.test(ph)) { ePhone.textContent = '请输入有效的 11 位手机号'; phone.classList.add('err'); ok = false; }
+
+    if (!ok) {
+      var first = sheet.querySelector('.input.err');
+      if (first) first.focus();
+      return;
+    }
+
+    var tail = digits.slice(-4);
+    MINE.cardPending = { bank: bank.value, masked: digits.slice(0, 4) + ' **** **** ' + tail, tail: tail, at: nowText() };
+    closeSheet();
+    renderMine();
+    renderProfile();
+    toast('结算卡变更已提交审核');
+  }
+
+  function referralText() { return 'https://pay.hifox.demo/i/' + MINE.invite; }
+
+  function qrSvgFromMatrix(qr) {
+    var quiet = 4, n = qr.size + quiet * 2, d = '';
+    for (var y = 0; y < qr.size; y++) {
+      for (var x = 0; x < qr.size; x++) {
+        if (qr.modules[y][x]) d += 'M' + (x + quiet) + ' ' + (y + quiet) + 'h1v1h-1z';
+      }
+    }
+    return '<svg viewBox="0 0 ' + n + ' ' + n + '" role="img" aria-label="推荐码二维码 ' + esc(MINE.invite) + '">' +
+      '<rect width="' + n + '" height="' + n + '" fill="#fff"/><path d="' + d + '" fill="#111827"/></svg>';
+  }
+
+  function openReferralSheet() {
+    var qr = qrEncode(referralText());
+    openSheet(
+      '<div class="ref-card"><div class="ref-qr">' + qrSvgFromMatrix(qr) + '</div>' +
+      '<div class="ref-code">' + esc(MINE.invite) + '</div>' +
+      '<p class="ref-tip">扫码注册成为我的下级代理</p>' +
+      '<p class="ref-note">编号 ' + esc(MINE.agentNo) + ' · ' + esc(MINE.region) + '</p></div>' +
+      '<p class="sheet-lead" style="margin-top:10px;text-align:center">二维码内容：<span class="mono">' + esc(referralText()) + '</span></p>',
+      {
+        title: '我的推荐码',
+        footer: '<button class="btn ghost" data-act="copy" data-val="' + esc(MINE.invite) + '">复制编号</button>' +
+          '<button class="btn" data-act="mine-invite-save">保存到相册</button>'
+      }
+    );
+  }
+
+  function saveReferralPng() {
+    var qr = qrEncode(referralText());
+    var W = 720, H = 940, quiet = 4;
+    var scale = Math.floor((W - 160) / (qr.size + quiet * 2));
+    var codeSize = (qr.size + quiet * 2) * scale;
+    var ox = (W - codeSize) / 2, oy = 170;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#07c160';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(24, 24, W - 48, H - 48);
+
+    ctx.fillStyle = '#111827';
+    ctx.textAlign = 'center';
+    ctx.font = '700 40px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText(MINE.nickname + ' 的推荐码', W / 2, 104);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ox, oy, codeSize, codeSize);
+    ctx.fillStyle = '#111827';
+    for (var y = 0; y < qr.size; y++) {
+      for (var x = 0; x < qr.size; x++) {
+        if (qr.modules[y][x]) {
+          ctx.fillRect(ox + (x + quiet) * scale, oy + (y + quiet) * scale, scale, scale);
+        }
+      }
+    }
+
+    ctx.fillStyle = '#111827';
+    ctx.font = '700 48px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText(MINE.invite, W / 2, oy + codeSize + 78);
+    ctx.fillStyle = '#5b6678';
+    ctx.font = '400 26px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText('扫码注册成为下级代理 · 编号 ' + MINE.agentNo, W / 2, oy + codeSize + 126);
+    ctx.fillStyle = '#b3bbc8';
+    ctx.font = '400 22px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText('演示图片 · 不用于真实拉新', W / 2, H - 56);
+
+    var filename = '推荐码_' + MINE.invite + '.png';
+    canvas.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      toast('推荐码图片已下载：' + filename);
+    }, 'image/png');
+  }
+
+  function policyRow(k, v) {
+    return '<div class="policy-row"><span>' + esc(k) + '</span><b>' + esc(v) + '</b></div>';
+  }
+
+  function openPolicySheet() {
+    openSheet(
+      '<p class="sheet-lead">适用对象：一级代理 · ' + esc(MINE.name) + '（' + esc(MINE.agentNo) + '）<br/>生效日期 2026-11-01 · 由平台统一配置</p>' +
+      '<div class="card card-pad">' +
+      policyRow('商户费率（对外报价）', '0.38%') +
+      policyRow('我的成本价', '0.30%') +
+      policyRow('分润空间', '0.08%') +
+      policyRow('结算周期', 'T+1') +
+      policyRow('单笔限额', '50,000.00 元') +
+      policyRow('单日限额', '200,000.00 元') +
+      '</div>' +
+      '<div class="sec-title"><h3>奖励规则</h3><span>只读</span></div>' +
+      '<div class="card card-pad">' +
+      policyRow('日结奖励', '0.02%') +
+      policyRow('月结奖励', '0.01%') +
+      '<p class="policy-sub">日结奖励按当日有效交易额计算；月结奖励按自然月有效交易额计算，满 30 万元起结。</p>' +
+      '</div>' +
+      '<div class="banner gray"><b>只读说明</b><p>政策由上级代理 / 平台配置，页面仅可查看。费率调整会提前 3 个工作日通过公告通知，变更不追溯历史交易。</p></div>',
+      { title: '我的政策', footer: '<button class="btn ghost" data-act="sheet-close">关闭</button>' }
+    );
+  }
+
+  function svcItem(icon, title, desc, act) {
+    return '<button type="button" class="svc-item" data-act="' + act + '">' +
+      '<div class="si">' + icon + '</div><div><div class="sn">' + esc(title) + '</div>' +
+      '<div class="sd">' + esc(desc) + '</div></div><span class="chev">›</span></button>';
+  }
+
+  function openServiceSheet() {
+    openSheet(
+      '<div class="svc-list">' +
+      svcItem('💬', '在线客服', '工作日 9:00–18:00 · 平均 3 分钟响应', 'svc-chat') +
+      svcItem('🔒', '隐私政策', '个人信息收集与使用说明', 'svc-privacy') +
+      svcItem('📣', '公众号', '云启支付服务号 · 审核与结算通知', 'svc-mp') +
+      '</div>' +
+      '<p class="sheet-lead" style="margin-top:12px">演示环境不连接真实客服系统，点击仅展示说明。</p>',
+      { title: '服务中心', footer: '<button class="btn ghost" data-act="sheet-close">关闭</button>' }
+    );
+  }
+
+  function openServiceChat() {
+    openSheet(
+      '<p class="sheet-lead">当前为演示客服，不接入真实会话。结算与风控问题请优先联系上级代理。</p>' +
+      '<div class="card card-pad">' +
+      mineRow('客服微信', '<span class="mono">yunqi-service</span>') +
+      mineRow('服务时间', '工作日 9:00–18:00') +
+      mineRow('客服电话', '<span class="mono">400-000-0000</span>') +
+      '</div>',
+      {
+        title: '在线客服',
+        footer: '<button class="btn ghost" data-act="copy" data-val="yunqi-service">复制客服微信</button>' +
+          '<button class="btn" data-act="sheet-close">关闭</button>'
+      }
+    );
+  }
+
+  function openPrivacySheet() {
+    var rows = [
+      ['收集范围', '手机号、实名资料、结算卡后四位、设备与操作日志'],
+      ['使用目的', '账号登录、实名审核、结算与风控、客服处理'],
+      ['存储与保护', '服务端加密存储，前端不保留完整卡号与证件号'],
+      ['共享范围', '仅在支付通道进件、报备与监管要求所必需范围内共享'],
+      ['你的权利', '查询、更正、注销账号，可通过服务中心提交']
+    ];
+    openSheet(
+      '<div class="card card-pad">' + rows.map(function (r) {
+        return '<div class="policy-row col"><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>';
+      }).join('') + '</div>' +
+      '<p class="mine-note">本页为原型演示文本，正式《隐私政策》以小程序内公示版本为准。</p>',
+      { title: '隐私政策', footer: '<button class="btn ghost" data-act="sheet-close">关闭</button>' }
+    );
+  }
+
+  function openServiceMp() {
+    openSheet(
+      '<div class="card card-pad">' +
+      mineRow('公众号', '云启支付服务号') +
+      mineRow('微信号', '<span class="mono">yunqi-pay</span>') +
+      '</div>' +
+      '<p class="sheet-lead">关注后可接收审核结果、结算到账与政策变更通知。</p>' +
+      '<div class="note"><span>ℹ️</span><span>演示环境不展示真实公众号二维码。</span></div>',
+      {
+        title: '公众号',
+        footer: '<button class="btn ghost" data-act="copy" data-val="yunqi-pay">复制微信号</button>' +
+          '<button class="btn" data-act="sheet-close">关闭</button>'
+      }
+    );
+  }
+
+  function openLogoutSheet() {
+    openSheet(
+      '<p class="sheet-lead">退出后需重新登录，未提交的修改不会保留。演示数据不会丢失。</p>',
+      {
+        title: '退出登录？',
+        footer: '<button class="btn ghost" data-act="sheet-close">取消</button><button class="btn danger-solid" data-act="logout-confirm">退出登录</button>'
+      }
+    );
   }
 
   // ---------------------------------------------------------------- 收益
@@ -1455,6 +2178,7 @@
       if (forId === 'm-stores') renderStores();
       if (forId === 'm-tx') renderTx();
       if (forId === 'm-qr') renderQr();
+      if (forId === 'm-mine') renderMine();
       return;
     }
 
@@ -1574,6 +2298,37 @@
       return;
     }
     if (act === 'wd-retry') { closeSheet(); toast('已提交重试，仅重试失败笔'); return; }
+
+    if (act === 'mine-profile') { go('m-profile'); return; }
+    if (act === 'mine-retry') {
+      pageState['m-mine'] = 'default';
+      $$('.demo-state[data-state-for="m-mine"] button').forEach(function (b) { b.classList.toggle('on', b.dataset.state === 'default'); });
+      renderMine();
+      return;
+    }
+    if (act === 'mine-avatar') { openAvatarSheet(); return; }
+    if (act === 'mine-avatar-pick') {
+      MINE.avatar = el.dataset.val;
+      MINE.avatarTone = el.dataset.tone;
+      closeSheet(); renderProfile(); renderMine();
+      toast('头像已更新（演示）');
+      return;
+    }
+    if (act === 'mine-nick-save') { saveNickname(); return; }
+    if (act === 'mine-phone') { openPhoneSheet(); return; }
+    if (act === 'mine-phone-save') { savePhone(); return; }
+    if (act === 'mine-info-apply') { openInfoApplySheet(); return; }
+    if (act === 'mine-info-save') { saveInfoApply(); return; }
+    if (act === 'mine-card') { openCardSheet(); return; }
+    if (act === 'mine-card-change') { openCardForm(); return; }
+    if (act === 'mine-card-save') { saveCard(); return; }
+    if (act === 'mine-invite') { openReferralSheet(); return; }
+    if (act === 'mine-invite-save') { saveReferralPng(); return; }
+    if (act === 'mine-policy') { openPolicySheet(); return; }
+    if (act === 'mine-service') { openServiceSheet(); return; }
+    if (act === 'svc-chat') { openServiceChat(); return; }
+    if (act === 'svc-privacy') { openPrivacySheet(); return; }
+    if (act === 'svc-mp') { openServiceMp(); return; }
 
     if (act === 'logout-confirm') { closeSheet(); go('m-splash', { replace: true }); return; }
   }
@@ -1838,12 +2593,11 @@
   var submitMchBtn = $('#submitMch');
   if (submitMchBtn) submitMchBtn.addEventListener('click', submitMch);
 
-  var logoutBtn = $('#logoutBtn');
-  if (logoutBtn) logoutBtn.addEventListener('click', function () {
-    openSheet('<p class="sheet-lead">退出后需重新输入手机号和密码。当前演示数据不会丢失。</p>', {
-      title: '退出登录？',
-      footer: '<button class="btn ghost" data-act="sheet-close">取消</button><button class="btn" data-act="logout-confirm">退出登录</button>'
-    });
+  document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'mineNick') {
+      var counter = $('#nickCount');
+      if (counter) counter.textContent = Math.min(nickLen(e.target.value), 99) + '/20';
+    }
   });
 
   backBtn.addEventListener('click', back);

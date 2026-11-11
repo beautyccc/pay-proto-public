@@ -530,29 +530,26 @@
           </div>
         </section>
 
-        <!-- ========== 14. 我的 ========== -->
+        <!-- ========== 14. 我的（MP-120～127） ========== -->
         <section class="mscreen" id="m-mine" data-title="我的" data-nav="off" data-tab="mine">
           <div class="mp-body" style="padding-top:12px">
-            <div class="card card-pad" style="display:flex;gap:12px;align-items:center">
-              <div class="avatar" style="width:52px;height:52px;font-size:16px">云启</div>
-              <div>
-                <div style="font-size:16px;font-weight:650">王海涛</div>
-                <div style="font-size:11.5px;color:#8a94a6;margin-top:4px">A0182 · 华东大区 · 已实名</div>
-              </div>
-              <span class="chip ok" style="margin-left:auto">正常</span>
+            <div class="demo-state" data-state-for="m-mine">
+              <span>演示状态</span>
+              <button data-state="default" class="on">默认</button>
+              <button data-state="loading">加载</button>
+              <button data-state="empty" disabled title="我的页无列表，空态不适用">空 N/A</button>
+              <button data-state="error">错误</button>
+              <button data-state="rejected">驳回</button>
+              <button data-state="stopped">停用</button>
             </div>
+            <div id="mineBody"></div>
+          </div>
+        </section>
 
-            <div class="card card-pad" style="margin-top:10px;padding-top:2px;padding-bottom:2px">
-              <button type="button" class="subj subj-btn"><div class="si">👤</div><div><div class="sn">个人资料</div><div class="sd">头像、昵称、手机号</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-              <button type="button" class="subj subj-btn"><div class="si">💳</div><div><div class="sn">结算卡</div><div class="sd">变更需审核</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-              <button type="button" class="subj subj-btn" data-go="m-revenue"><div class="si">💰</div><div><div class="sn">我的钱包</div><div class="sd">六科目余额</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-              <button type="button" class="subj subj-btn"><div class="si">🎟️</div><div><div class="sn">我的推荐码</div><div class="sd">YQ-8823-KL</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-              <button type="button" class="subj subj-btn"><div class="si">📄</div><div><div class="sn">我的政策</div><div class="sd">费率与奖励规则</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-              <button type="button" class="subj subj-btn" data-locked="服务中心将在后续版本开放"><div class="si">🛟</div><div><div class="sn">服务中心</div><div class="sd">客服、隐私政策</div></div><div class="sv" style="font-size:14px;color:#c3cad6">›</div></button>
-            </div>
-
-            <button class="btn ghost" style="margin-top:14px;color:#b91c1c" id="logoutBtn">退出登录</button>
-            <p style="text-align:center;font-size:10.5px;color:#b3bbc8;margin-top:14px">原型 v0.2 · 所有数据为演示数据</p>
+        <!-- ========== 15. 个人资料（MP-120 + MP-122 合并） ========== -->
+        <section class="mscreen" id="m-profile" data-title="个人资料" data-nav="on" data-tab="">
+          <div class="mp-body">
+            <div id="profileBody"></div>
           </div>
         </section>
 
