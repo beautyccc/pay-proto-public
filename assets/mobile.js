@@ -1518,7 +1518,8 @@
       '</div>' +
       '<div class="sec-title"><h3>账号信息</h3><span>只读</span></div>' +
       '<div class="card card-pad">' +
-      mineRow('手机号', esc(MINE.phone), '<button type="button" class="link-quiet" data-act="mine-phone">修改</button>') +
+      mineRow('手机号', esc(MINE.phone) + (MINE.phonePending ? ' <span class="chip warn">审核中</span>' : ''),
+        '<button type="button" class="link-quiet" data-act="mine-phone">修改</button>') +
       mineRow('代理编号', esc(MINE.agentNo)) +
       mineRow('实名状态', esc(MINE.realname) + ' <span class="chip ok">已认证</span>') +
       mineRow('所属大区', esc(MINE.region)) +
@@ -1664,6 +1665,17 @@
 
   function cardDigits(value) { return String(value || '').replace(/[\s-]/g, ''); }
 
+  function luhnOk(digits) {
+    var sum = 0, alt = false;
+    for (var i = digits.length - 1; i >= 0; i--) {
+      var n = +digits.charAt(i);
+      if (alt) { n *= 2; if (n > 9) n -= 9; }
+      sum += n;
+      alt = !alt;
+    }
+    return sum % 10 === 0;
+  }
+
   function saveCard() {
     var bank = $('#cardBank'), no = $('#cardNo'), name = $('#cardName'), phone = $('#cardPhone');
     var eNo = $('#cardNoErr'), eName = $('#cardNameErr'), ePhone = $('#cardPhoneErr');
@@ -1676,6 +1688,7 @@
     if (!digits) { eNo.textContent = '请输入银行卡号'; no.classList.add('err'); ok = false; }
     else if (!/^\d{16,19}$/.test(digits)) { eNo.textContent = '卡号应为 16–19 位数字，请核对后重试'; no.classList.add('err'); ok = false; }
     else if (!/^[4-6]/.test(digits)) { eNo.textContent = '卡号首位应为 4–6，请确认是否为本人的银联储蓄卡'; no.classList.add('err'); ok = false; }
+    else if (!luhnOk(digits)) { eNo.textContent = '卡号校验位不正确（Luhn 校验未通过），请核对后重试'; no.classList.add('err'); ok = false; }
 
     var nm = name.value.trim();
     if (!nm) { eName.textContent = '请输入户名'; name.classList.add('err'); ok = false; }
@@ -1769,17 +1782,26 @@
     ctx.fillText('演示图片 · 不用于真实拉新', W / 2, H - 56);
 
     var filename = '推荐码_' + MINE.invite + '.png';
-    canvas.toBlob(function (blob) {
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-      toast('推荐码图片已下载：' + filename);
-    }, 'image/png');
+    if (!canvas.toBlob) {
+      toast('当前浏览器不支持直接保存，请长按二维码保存或复制编号');
+      return;
+    }
+    try {
+      canvas.toBlob(function (blob) {
+        if (!blob) { toast('保存失败，请长按二维码保存或复制编号'); return; }
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        toast('推荐码图片已下载：' + filename);
+      }, 'image/png');
+    } catch (e) {
+      toast('保存失败，请长按二维码保存或复制编号');
+    }
   }
 
   function policyRow(k, v) {
