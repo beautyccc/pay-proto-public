@@ -1398,7 +1398,10 @@
     return '<span class="chip ok">正常</span>';
   }
 
-  function mineCardNote() { return MINE.cardPending ? '变更审核中' : '变更需审核'; }
+  function mineCardNote() {
+    if (mineState() === 'rejected') return '审核未通过，暂不可变更';
+    return MINE.cardPending ? '变更审核中' : '变更需审核';
+  }
 
   function mineRow(k, v, extra) {
     return '<div class="subj"><div><div class="sn">' + esc(k) + '</div></div>' +
@@ -1623,21 +1626,27 @@
   }
 
   function openCardSheet() {
+    var rejected = mineState() === 'rejected';
     openSheet(
       '<div class="card-view">' +
       '<div class="card-view-top"><div class="card-bank">' + esc(MINE.bank) + ' · ' + esc(MINE.cardType) + '</div>' +
       '<span class="card-state">' + cardStatusChip() + '</span></div>' +
       '<div class="card-no mono">' + esc(MINE.cardMasked) + '</div>' +
       '<div class="card-meta">户名 ' + esc(MINE.name) + ' · 对私储蓄卡</div></div>' +
-      (MINE.cardPending
-        ? '<div class="banner warn"><b>变更审核中</b><p>新卡 ' + esc(MINE.cardPending.bank) + ' ' + esc(MINE.cardPending.masked) +
-          ' 提交于 ' + esc(MINE.cardPending.at) + '。审核期间原卡继续用于结算。</p></div>'
-        : '<div class="banner gray"><b>变更需审核</b><p>结算卡变更由运营核验，审核通过后生效；审核期间原卡继续用于结算。</p></div>') +
+      (rejected
+        ? '<div class="banner danger"><b>实名审核未通过</b><p>资金类操作已暂停；重新提交资料并通过审核后，才可变更结算卡。</p></div>'
+        : MINE.cardPending
+          ? '<div class="banner warn"><b>变更审核中</b><p>新卡 ' + esc(MINE.cardPending.bank) + ' ' + esc(MINE.cardPending.masked) +
+            ' 提交于 ' + esc(MINE.cardPending.at) + '。审核期间原卡继续用于结算。</p></div>'
+          : '<div class="banner gray"><b>变更需审核</b><p>结算卡变更由运营核验，审核通过后生效；审核期间原卡继续用于结算。</p></div>') +
       '<p class="sheet-lead">页面仅展示卡号后四位，完整卡号不在前端留存。</p>',
       {
         title: '结算卡',
         footer: '<button class="btn ghost" data-act="sheet-close">关闭</button>' +
-          (MINE.cardPending ? '' : '<button class="btn" data-act="mine-card-change">变更结算卡</button>')
+          (MINE.cardPending ? ''
+            : rejected
+              ? '<button class="btn" data-locked="实名审核未通过，暂不能变更结算卡">变更结算卡</button>'
+              : '<button class="btn" data-act="mine-card-change">变更结算卡</button>')
       }
     );
   }
@@ -1839,7 +1848,7 @@
   function openServiceSheet() {
     openSheet(
       '<div class="svc-list">' +
-      svcItem('💬', '在线客服', '工作日 9:00–18:00 · 平均 3 分钟响应', 'svc-chat') +
+      svcItem('💬', '联系客服', '工作日 9:00–18:00 · 平均 3 分钟响应', 'svc-chat') +
       svcItem('🔒', '隐私政策', '个人信息收集与使用说明', 'svc-privacy') +
       svcItem('📣', '公众号', '云启支付服务号 · 审核与结算通知', 'svc-mp') +
       '</div>' +
